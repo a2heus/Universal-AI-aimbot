@@ -1,4 +1,4 @@
-# AI Aimbot
+# Universal AI Aimbot
 
 ## Description
 This project is for educational purposes and demonstrates the use of AI for real-time object tracking. It utilizes a YOLOv5 model to detect targets on the screen and an algorithm to move the mouse smoothly and predictably towards the detected target.
