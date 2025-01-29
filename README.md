@@ -48,9 +48,10 @@ The program's behavior can be adjusted via several constants defined at the begi
 - **YOLOv5**: Ultralytics ([GitHub](https://github.com/ultralytics/yolov5))
 - **dxcam**: Fast screen capture for Windows
 - **pynput**: Mouse input handling
-- **pyautogui**: Simulating mouse movements
+- **ctypes**: Simulating mouse movements
 - **OpenCV**: Real-time image processing
-
+- **Pyautogui**: Screen Size
+  
 ---
 
 ## Note
