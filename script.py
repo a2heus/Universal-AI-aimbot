@@ -10,8 +10,8 @@ import win32con
 
 aimbot_enabled = False
 locked_target = None  
-HEAD_OFFSET = -15  # négatif = plus haut, positif = plus bas
-SMOOTHNESS = 2   # Plus la valeur est faible plus le mouvement est lent et smooth (réduire si bug de souris)
+HEAD_OFFSET = -15  # négatif = plus haut, positif = plus bas 
+SMOOTHNESS = 2   # Plus la valeur est faible plus le mouvement est lent et smooth 
 TARGET_LOCK_THRESHOLD = 20  
 
 user32 = ctypes.windll.user32
