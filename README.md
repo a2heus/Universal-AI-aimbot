@@ -1,6 +1,6 @@
 # Universal AI Aimbot
 
-![Demo](https://streamable.com/z8hv7h)
+[https://streamable.com/z8hv7h](https://streamable.com/z8hv7h)
 
 > **Disclaimer:**  
 > This project is intended for educational and experimental purposes only. The author is not responsible for any misuse. Use this tool at your own risk and ensure you comply with all applicable laws and game terms of service.
