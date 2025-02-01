@@ -1,81 +1,161 @@
 # Universal AI Aimbot
 
-## Description
-This project is for educational purposes and demonstrates the use of AI for real-time object tracking. It utilizes a YOLOv5 model to detect targets on the screen and an algorithm to move the mouse smoothly and predictably towards the detected target.
+![Demo](https://streamable.com/z8hv7h)
 
-> **Warning:** This project is intended solely for educational and experimental purposes. Any use for unethical or illegal activities is strictly prohibited.
+> **Disclaimer:**  
+> This project is intended for educational and experimental purposes only. The author is not responsible for any misuse. Use this tool at your own risk and ensure you comply with all applicable laws and game terms of service.
+
+---
+
+## Overview
+
+This project implements an aimbot that automatically detects targets on-screen and moves the mouse pointer smoothly to lock onto them. Built using Python, it leverages the power of a pre-trained YOLOv5 model for real-time object detection and utilizes screen capturing via `dxcam`. The aimbot is toggled using the right mouse button and provides visual feedback (bounding boxes, FPS, and target information) on an OpenCV window.
+
+The code was developed by **a2heus**, a 16-year-old developer, as a personal project. It serves as a learning tool for computer vision and real-time processing.
+
+---
+
+## Features
+
+- **Real-Time Object Detection:**  
+  Utilizes a pre-trained YOLOv5 model (loaded via `torch.hub`) to detect objects in a defined screen region.
+  
+- **Screen Capture:**  
+  Uses `dxcam` to capture a specified region of your screen for processing.
+  
+- **Smooth Mouse Movement:**  
+  Calculates and applies smooth, gradual mouse movements to simulate aimbot functionality with configurable smoothness and head offset.
+  
+- **Target Locking:**  
+  Automatically selects and locks onto the target closest to the center of the screen. It also maintains target tracking by checking proximity between frames.
+  
+- **Toggle Control:**  
+  Activates or deactivates the aimbot using the right mouse button.
+  
+- **On-Screen Visual Feedback:**  
+  Displays bounding boxes, confidence scores, FPS, and aimbot status on a window.
+
+---
+
+## Demo Video
+
+Watch the demonstration of the aimbot in action:  
+[Demo on Streamable](https://streamable.com/z8hv7h)
 
 ---
 
 ## Installation
-Before running this project, ensure that you have installed all the required dependencies. You can install them using `pip`:
+
+### Prerequisites
+
+- **Operating System:** Windows (the project uses Windows-specific libraries such as `win32api` and `dxcam`)
+- **Python:** Version 3.8 or higher is recommended
+
+### Required Python Libraries
+
+Install the required dependencies via `pip`. You can create a virtual environment if desired.
 
 ```bash
-pip install torch torchvision numpy opencv-python dxcam pynput pyautogui
+pip install opencv-python torch numpy dxcam pynput pywin32
 ```
 
-> **Note:** This project works only on Windows due to the use of `ctypes` and Windows-specific libraries.
+> **Note:**  
+> The project uses the YOLOv5 model from Ultralytics, which will be automatically downloaded when running the code for the first time.
+
+---
+
+## Usage
+
+1. **Clone the Repository:**
+
+   ```bash
+   git clone https://github.com/a2heus/Universal-AI-aimbot.git
+   cd aimbot-project
+   ```
+
+2. **Run the Program:**
+
+   Simply execute the main Python file:
+
+   ```bash
+   python script.py
+   ```
+
+3. **Controls:**
+
+   - **Right Mouse Button:** Hold down to enable the aimbot; release to disable.
+   - **'q' Key:** Press to quit the application.
+
+The program will open an OpenCV window displaying the processed video feed with:
+- **Bounding Boxes:** Green for detected targets; red if the target is locked.
+- **FPS Display**
+- **Aimbot Status:** Shows whether the aimbot is enabled.
+- **Target Information:** Displays the center coordinates and confidence score of the locked target.
+
+---
+
+## Configuration
+
+The behavior of the aimbot can be adjusted by modifying the following global variables in the code:
+
+- **`HEAD_OFFSET`**:  
+  Adjusts the vertical offset for the aiming point.  
+  - Negative values raise the target (aim higher).  
+  - Positive values lower the target (aim lower).
+
+- **`SMOOTHNESS`**:  
+  Determines how gradual the mouse movement is.  
+  - Lower values yield slower and smoother movement.
+
+- **`TARGET_LOCK_THRESHOLD`**:  
+  The maximum allowable distance (in pixels) between the previously locked target and a new detection for maintaining the lock.
+
+These parameters are defined at the top of the source code and can be tweaked to suit your needs.
 
 ---
 
 ## How It Works
-1. **Model Initialization**: A pre-trained YOLOv5 model is loaded for object detection.
-2. **Screen Capture**: The `dxcam` library is used to capture a specific region of the screen.
-3. **Target Detection**: YOLOv5 identifies detected objects and selects the best candidate based on confidence and class.
-4. **Mouse Movement**: The target's position is calculated, and interpolation is applied to move the mouse smoothly toward it.
-5. **Activation via Right Click**: The tracking and movement algorithm activates only when the user holds down the right mouse button.
-6. **Stopping and Closing**: The user can exit the program by pressing `q`.
+
+1. **Model Loading:**  
+   The program loads the YOLOv5 model using `torch.hub` and sets a confidence threshold (`model.conf = 0.5`).
+
+2. **Screen Capture:**  
+   A screen region is defined (centered on the screen) and captured using `dxcam`.
+
+3. **Target Detection:**  
+   Each frame is processed by the YOLOv5 model. Detected targets of allowed classes are filtered by confidence and processed to compute their center positions.
+
+4. **Target Locking & Mouse Movement:**  
+   - The target closest to the center of the screen is selected as the "locked" target.
+   - If the aimbot is enabled (via right mouse button), the program calculates the mouse movement required to reach the target’s position, applying a smooth transition.
+   - The mouse is moved using Windows API functions.
+
+5. **Display:**  
+   Processed frames are displayed in a window with overlays indicating the current status, FPS, and target information.
 
 ---
 
-## Variable Configuration
-The program's behavior can be adjusted via several constants defined at the beginning of the script:
+## Dependencies and Resources
 
-| Variable | Default Value | Description |
-|----------|--------------|-------------|
-| `TARGET_SMOOTHING` | `0.50` | Smooths the target to avoid abrupt movements. |
-| `MIN_CONFIDENCE` | `0.45` | Minimum confidence for the model to consider a detection. |
-| `LERP_SPEED` | `0.9` | Linear interpolation factor to smooth tracking. |
-| `MAX_SPEED` | `1000` | Maximum speed of mouse movement. |
-| `DECELERATION_RADIUS` | `50` | Deceleration radius around the target to prevent abrupt stops. |
-| `STOPPING_THRESHOLD` | `3` | Distance in pixels below which the mouse stops moving. |
-| `PREDICTIVE_FACTOR` | `0.1` | Prediction factor to compensate for target movement. |
-| `INPUT_SAMPLE_RATE` | `0.001` | Sampling frequency for mouse movement. |
-
----
-
-## Credits
-- **YOLOv5**: Ultralytics ([GitHub](https://github.com/ultralytics/yolov5))
-- **dxcam**: Fast screen capture for Windows
-- **pynput**: Mouse input handling
-- **ctypes**: Simulating mouse movements
-- **OpenCV**: Real-time image processing
-- **Pyautogui**: Screen Size
-  
----
-
-## Note
-If you want to modify the capture region, adjust the `region` variable in the main script:
-```python
-w, h = pyautogui.size()
-s = 500  # Capture region size
-l = (w - s) // 2
-t = (h - s) // 2
-region = (l, t, l + s, t + s)
-```
-
----
-
-## Running the Project
-Simply run the Python script:
-```bash
-python script.py
-```
-
-To stop the program, press `q` in the display window.
+- **OpenCV:** [opencv.org](https://opencv.org/)
+- **PyTorch:** [pytorch.org](https://pytorch.org/)
+- **YOLOv5:** [Ultralytics YOLOv5 GitHub](https://github.com/ultralytics/yolov5)
+- **dxcam:** [dxcam on PyPI](https://pypi.org/project/dxcam/)
+- **pynput:** [pynput on PyPI](https://pypi.org/project/pynput/)
+- **pywin32:** [pywin32 on PyPI](https://pypi.org/project/pywin32/)
 
 ---
 
 ## License
-This project is provided for educational purposes only. Using this code for any illegal activities is strictly prohibited.
 
+This project is released under the MIT License. See the [LICENSE](LICENSE) file for more details.
+
+---
+
+## Acknowledgements
+
+- Thanks to the developers of YOLOv5 and the Ultralytics team for providing an excellent object detection model.
+- Special thanks to the maintainers of `dxcam`, `opencv-python`, and other libraries used in this project.
+- Inspired by the possibilities of real-time computer vision and hardware control on Windows.
+
+---
