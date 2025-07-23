@@ -7,25 +7,32 @@ import ctypes
 from pynput import mouse
 import win32api
 import win32con
+from config_manager import ConfigManager
+
+config = ConfigManager('config.json')
 
 aimbot_enabled = False
-locked_target = None  
-HEAD_OFFSET = -15  # négatif = plus haut, positif = plus bas 
-SMOOTHNESS = 2   # Plus la valeur est faible plus le mouvement est lent et smooth 
-TARGET_LOCK_THRESHOLD = 20  
+locked_target = None
+
+HEAD_OFFSET = config.get('aimbot.head_offset', -15)
+SMOOTHNESS = config.get('aimbot.smoothness', 2)
+TARGET_LOCK_THRESHOLD = config.get('aimbot.target_lock_threshold', 20)
+CAPTURE_SIZE = config.get('aimbot.capture_size', 450)
 
 user32 = ctypes.windll.user32
 screen_width = user32.GetSystemMetrics(0)
 screen_height = user32.GetSystemMetrics(1)
-capture_size = 450 
-region_left = (screen_width - capture_size) // 2
-region_top = (screen_height - capture_size) // 2
-region_right = region_left + capture_size
-region_bottom = region_top + capture_size
+region_left = (screen_width - CAPTURE_SIZE) // 2
+region_top = (screen_height - CAPTURE_SIZE) // 2
+region_right = region_left + CAPTURE_SIZE
+region_bottom = region_top + CAPTURE_SIZE
 REGION = (region_left, region_top, region_right, region_bottom)
 
-def move_mouse_to_target(target_pos, smoothness=SMOOTHNESS):
-    current_pos = win32api.GetCursorPos()  # (x, y)
+def move_mouse_to_target(target_pos, smoothness=None):
+    if smoothness is None:
+        smoothness = config.get('aimbot.smoothness', SMOOTHNESS)
+        
+    current_pos = win32api.GetCursorPos()
     dx = target_pos[0] - current_pos[0]
     dy = target_pos[1] - current_pos[1]
     
@@ -39,7 +46,11 @@ def move_mouse_to_target(target_pos, smoothness=SMOOTHNESS):
 
 def on_click(x, y, button, pressed):
     global aimbot_enabled
-    if button == mouse.Button.right:
+    activation_button = config.get('controls.activation_button', 'right')
+    
+    if activation_button == 'right' and button == mouse.Button.right:
+        aimbot_enabled = pressed
+    elif activation_button == 'left' and button == mouse.Button.left:
         aimbot_enabled = pressed
     return True
 
@@ -51,7 +62,7 @@ def detect_targets(model, frame):
     results = model(frame)
     dets = results.xyxy[0].cpu().numpy()
     targets = []
-    allowed_classes = [0] 
+    allowed_classes = config.get('model.allowed_classes', [0])
 
     for det in dets:
         x1, y1, x2, y2, conf, cls = det
@@ -71,6 +82,14 @@ def detect_targets(model, frame):
 def aimbot_loop(model, camera):
     global locked_target
     prev_time = time.perf_counter()
+    
+    show_fps = config.get('display.show_fps', True)
+    show_target_info = config.get('display.show_target_info', True)
+    quit_key = config.get('controls.quit_key', 'q')
+    head_offset = config.get('aimbot.head_offset', HEAD_OFFSET)
+    target_lock_threshold = config.get('aimbot.target_lock_threshold', TARGET_LOCK_THRESHOLD)
+    capture_size = config.get('aimbot.capture_size', CAPTURE_SIZE)
+    
     while True:
         frame = camera.get_latest_frame()
         if frame is None:
@@ -88,7 +107,7 @@ def aimbot_loop(model, camera):
             for target in targets:
                 distance = np.hypot(target['center'][0] - locked_target['center'][0],
                                     target['center'][1] - locked_target['center'][1])
-                if distance < TARGET_LOCK_THRESHOLD:
+                if distance < target_lock_threshold:
                     found_target = target
                     break
             if found_target is not None:
@@ -114,8 +133,8 @@ def aimbot_loop(model, camera):
 
         if aimbot_enabled and predicted_target is not None:
             absolute_target = (REGION[0] + predicted_target[0],
-                               REGION[1] + predicted_target[1] + HEAD_OFFSET)
-            move_mouse_to_target(absolute_target, smoothness=SMOOTHNESS)
+                               REGION[1] + predicted_target[1] + head_offset)
+            move_mouse_to_target(absolute_target)
 
         for target in targets:
             x1, y1, x2, y2 = target['bbox']
@@ -124,42 +143,67 @@ def aimbot_loop(model, camera):
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
             cv2.putText(frame, f"{conf:.2f}", (x1, max(y1 - 5, 0)),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
-        cv2.putText(frame, f"FPS: {fps:.1f}", (10, 20),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+
+        if show_fps:
+            cv2.putText(frame, f"FPS: {fps:.1f}", (10, 20),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+        
         cv2.putText(frame, f"Aimbot: {'ON' if aimbot_enabled else 'OFF'}", (10, 45),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
-        if locked_target is not None:
+        
+        if show_target_info and locked_target is not None:
             cv2.putText(frame, f"Target: {locked_target['center']} Conf: {locked_target['confidence']:.2f}",
                         (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
 
-        cv2.imshow("Aimbot", frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        cv2.imshow(config.get('display.window_name', 'Aimbot'), frame)
+        if cv2.waitKey(1) & 0xFF == ord(quit_key):
             break
 
 def main():
+    print("AI AIMBOT")
+    print(f"Loaded from: {config.config_path}")
+    print(f"HEAD_OFFSET: {config.get('aimbot.head_offset')}")
+    print(f"SMOOTHNESS: {config.get('aimbot.smoothness')}")
+    print(f"CAPTURE_SIZE: {config.get('aimbot.capture_size')}")
+    print(f"Confidence threshold: {config.get('model.confidence_threshold')}")
+    
     start_mouse_listener()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    use_cuda = config.get('performance.use_cuda', True)
+    device = torch.device("cuda" if torch.cuda.is_available() and use_cuda else "cpu")
+    print(f"Device used: {device}")
+    
     print("Loading YOLOv5 model (.pt)...")
-    model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
+    model_name = config.get('model.model_name', 'yolov5s')
+    pretrained = config.get('model.pretrained', True)
+    model = torch.hub.load('ultralytics/yolov5', model_name, pretrained=pretrained)
     model.to(device)
-    model.conf = 0.5
+    model.conf = config.get('model.confidence_threshold', 0.5)
+    
+    capture_size = config.get('aimbot.capture_size', CAPTURE_SIZE)
     _ = model(np.zeros((capture_size, capture_size, 3), dtype=np.uint8))
     print("Model loaded.")
+    
     print("Initializing screen capture...")
-    camera = dxcam.create(device_idx=0, region=REGION)
+    device_idx = config.get('performance.device_idx', 0)
+    camera = dxcam.create(device_idx=device_idx, region=REGION)
     camera.start()
     time.sleep(1)
     
-    cv2.namedWindow("Aimbot", cv2.WINDOW_NORMAL)
-    cv2.setWindowProperty("Aimbot", cv2.WND_PROP_TOPMOST, 1)
+    window_name = config.get('display.window_name', 'Aimbot')
+    window_topmost = config.get('display.window_topmost', True)
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+    if window_topmost:
+        cv2.setWindowProperty(window_name, cv2.WND_PROP_TOPMOST, 1)
     
     try:
         aimbot_loop(model, camera)
     except KeyboardInterrupt:
-        pass
+        print("\nStop...")
     finally:
         camera.stop()
         cv2.destroyAllWindows()
+        print("Cleaning done")
 
 if __name__ == "__main__":
     main()
